@@ -78,49 +78,63 @@ int main()
 	SOCKET sS;
 	clock_t t_start = 0, t_end = 0;
 
-	SOCKADDR_IN serv;														// параметры  сокета sS
-	serv.sin_family = AF_INET;												// используется IP-адресация  
-	serv.sin_port = htons(2000);											// порт 2000
-	serv.sin_addr.s_addr = INADDR_ANY;
-
 	try
 	{
 		if (FAILED(WSAStartup(MAKEWORD(2, 0), &ws)))
 			throw SetErrorMsgText("STARTUP: ", WSAGetLastError());
 
-		if ((sS = socket(AF_INET, SOCK_DGRAM, NULL)) == INVALID_SOCKET)
+		if ((sS = socket(AF_INET, SOCK_STREAM, NULL)) == INVALID_SOCKET)
 			throw  SetErrorMsgText("SOCKET: ", WSAGetLastError());
 		cout << "Socket created." << endl;
+
+		SOCKADDR_IN serv;														// параметры  сокета sS
+		serv.sin_family = AF_INET;												// используется IP-адресация  
+		serv.sin_port = htons(2000);											// порт 2000
+		serv.sin_addr.s_addr = INADDR_ANY;
 
 		if (bind(sS, (LPSOCKADDR)& serv, sizeof(serv)) == SOCKET_ERROR)
 			throw  SetErrorMsgText("BIND: ", WSAGetLastError());
 
-	listen:
-		t_start = clock();
 
+	listen:
+		if (listen(sS, SOMAXCONN) == SOCKET_ERROR)
+			throw  SetErrorMsgText("LISTEN: ", WSAGetLastError());
+		cout << "Listening..." << endl;
+
+		SOCKET cS;																// сокет для обмена данными с клиентом 
 		SOCKADDR_IN clnt;														// параметры  сокета клиента
-		char ibuf[50];															//буфер ввода 
 		memset(&clnt, 0, sizeof(clnt));											// обнулить память
 		int lclnt = sizeof(clnt);												// размер SOCKADDR_IN
-		int libuf = 0;															//количество принятых байт
+
+		if ((cS = accept(sS, (sockaddr*)& clnt, &lclnt)) == INVALID_SOCKET)
+			throw  SetErrorMsgText("ACCEPT: ", WSAGetLastError());
+		cout << "Connection accepted." << endl << endl;
+
+		cout << endl << "****CLIENT****" << endl;
+		cout << "IP: " << inet_ntoa(clnt.sin_addr) << endl;
+		cout << "PORT: " << ntohs(clnt.sin_port) << endl << endl;
+
+		char ibuf[50];															//буфер ввода 
+		int  libuf = 0;															//количество принятых байт
+		t_start = clock();
 
 		for (;;)
 		{
-			cout << "Server is waiting for client..." << endl;
-			if ((libuf = recvfrom(sS, ibuf, sizeof(ibuf), NULL,
-									(SOCKADDR*)&clnt, &lclnt)) == SOCKET_ERROR)
-				throw  SetErrorMsgText("RECVFROM:", WSAGetLastError());
-			if (ibuf[0] == '0') {
+			if ((libuf = recv(cS, ibuf, sizeof(ibuf), NULL)) == SOCKET_ERROR)
+				throw  SetErrorMsgText("RECV:", WSAGetLastError());
+			if (libuf == 0) {
 				t_end = clock();
 				cout << endl << "Accomplished in " << (double)(t_end - t_start) / (double)CLOCKS_PER_SEC << " sec." << endl;
 				goto listen;
 			}
 			cout << ibuf << endl;
 
-			if ((libuf = sendto(sS, ibuf, strlen(ibuf) + 1, NULL,
-									(SOCKADDR*)& clnt, lclnt) == SOCKET_ERROR))
-				throw  SetErrorMsgText("SENDTO:", WSAGetLastError());
+			if ((libuf = send(cS, ibuf, strlen(ibuf) + 1, NULL)) == SOCKET_ERROR)
+				throw  SetErrorMsgText("SEND:", WSAGetLastError());
 		}
+
+		if (closesocket(cS) == SOCKET_ERROR)
+			throw  SetErrorMsgText("CLOSE_SOCKET: ", WSAGetLastError());
 
 		if (closesocket(sS) == SOCKET_ERROR)
 			throw  SetErrorMsgText("CLOSE_SOCKET: ", WSAGetLastError());
@@ -135,3 +149,4 @@ int main()
 	cout << endl;
 	return 0;
 }
+
