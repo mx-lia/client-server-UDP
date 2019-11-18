@@ -80,11 +80,11 @@ int main()
 	SOCKADDR_IN serv;															// параметры  сокета sS
 	serv.sin_family = AF_INET;													// используется IP-адресация  
 	serv.sin_port = htons(2000);												// порт 2000
-	serv.sin_addr.s_addr = inet_addr("127.0.0.1");
+	serv.sin_addr.s_addr = inet_addr("192.168.43.61");
 	int lserv = sizeof(serv);
 
 	int  libuf = 0;
-	char buf[5] = "";
+	char buf[7] = "";
 	int i = 1;
 
 	int k;
@@ -103,7 +103,7 @@ int main()
 		while (i <= k)
 		{
 			string obuf_concat = obuf + itoa(i, buf, 10);
-			cout << "RECEIVE: " << obuf_concat << endl;
+			cout << "SEND: " << obuf_concat << endl;
 			if ((libuf = sendto(cC, obuf_concat.c_str(), obuf_concat.length() + 1, NULL,
 								(SOCKADDR*)&serv, sizeof(serv))) == SOCKET_ERROR)
 				throw  SetErrorMsgText("SENDTO: ", WSAGetLastError());
